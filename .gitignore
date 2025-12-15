@@ -25,6 +25,10 @@ downloads/
 *.webm
 *.flac
 
+# Cache
+.cache/
+backend/.cache
+
 # IDE
 .vscode/
 .idea/
