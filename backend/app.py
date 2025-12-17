@@ -482,12 +482,18 @@ async def download_file(track_id: str, filename: str = Query(...), background_ta
     is_temp_file = temp_dir_path in file_path or "temp" in os.path.dirname(file_path)
     
     # Return file for browser to download (saves to user's Downloads folder)
-    # Use decoded filename for Content-Disposition header
+    # Use RFC 5987 encoding for non-ASCII filenames in Content-Disposition header
+    # This handles special characters like ć, č, š, etc.
+    ascii_filename = decoded_filename.encode('ascii', 'ignore').decode('ascii') or 'download.mp3'
+    encoded_filename = quote(decoded_filename)
+    
     response = FileResponse(
         file_path,
         media_type='audio/mpeg',
-        filename=decoded_filename,
-        headers={"Content-Disposition": f"attachment; filename=\"{decoded_filename}\""}
+        filename=ascii_filename,  # Fallback ASCII filename
+        headers={
+            "Content-Disposition": f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
+        }
     )
     
     # Delete temp file after download completes (only for local downloads)
