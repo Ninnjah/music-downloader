@@ -251,8 +251,9 @@ async function downloadTrack(track, selectedVideoId = null) {
 let pendingTrack = null;
 let pendingLocation = null;
 
-function getYouTubeUrl(videoId) {
-    return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+function getYouTubeUrl(videoId, source = 'yt-dlp') {
+    const baseUrl = source === 'ytmusic' ? 'https://music.youtube.com' : 'https://www.youtube.com';
+    return `${baseUrl}/watch?v=${encodeURIComponent(videoId)}`;
 }
 
 const EXTERNAL_LINK_SVG = `
@@ -284,7 +285,7 @@ function showCandidateModal(track, candidates, location) {
                     <div class="candidate-title">${escapeHtml(candidate.title)}</div>
                     <a
                         class="candidate-external"
-                        href="${getYouTubeUrl(candidate.video_id)}"
+                        href="${getYouTubeUrl(candidate.video_id, candidate.source)}"
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Open on YouTube"

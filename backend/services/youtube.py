@@ -1,4 +1,5 @@
 import yt_dlp
+from ytmusicapi import YTMusic
 import os
 import re
 from difflib import SequenceMatcher
@@ -15,6 +16,11 @@ class YouTubeService:
     def __init__(self):
         self.output_format = config.OUTPUT_FORMAT
         self.audio_quality = config.AUDIO_QUALITY
+        try:
+            self.ytmusic = YTMusic()
+        except Exception as e:
+            print(f"Failed to initialize YTMusic: {e}")
+            self.ytmusic = None
     
     def calculate_similarity(self, str1: str, str2: str) -> float:
         """Calculate similarity between two strings using SequenceMatcher (similar to Levenshtein)"""
@@ -73,71 +79,125 @@ class YouTubeService:
     
     def search_candidates(self, track_name: str, artist: str, track_info: Dict = None, num_results: int = 5) -> Dict:
         """Search YouTube and return top candidates with confidence scores"""
-        if track_info and track_info.get('album'):
-            query = f"{artist} {track_name} {track_info.get('album')} official"
-        else:
-            query = f"{artist} {track_name} official audio"
+        candidates = []
         
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'extract_flat': True,  # Don't download, just get info
-            'default_search': f'ytsearch{num_results}',
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        }
+        # Try YTMusic first
+        if self.ytmusic:
+            try:
+                search_query = f"{artist} {track_name}"
+                if track_info and track_info.get('album'):
+                    search_query += f" {track_info.get('album')}"
+                
+                # Search for songs specifically
+                results = self.ytmusic.search(search_query, filter="songs", limit=num_results)
+                
+                for res in results:
+                    video_id = res.get('videoId')
+                    if not video_id:
+                        continue
+                        
+                    title = res.get('title', '')
+                    # YTMusic results have artists as a list
+                    artists_list = res.get('artists', [])
+                    channel = ", ".join([a.get('name', '') for a in artists_list]) if artists_list else ''
+                    
+                    duration_str = res.get('duration', '0:00')
+                    # Convert duration string (M:SS) to seconds
+                    duration = 0
+                    try:
+                        parts = duration_str.split(':')
+                        if len(parts) == 2:
+                            duration = int(parts[0]) * 60 + int(parts[1])
+                        elif len(parts) == 3:
+                            duration = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                    except:
+                        pass
+                        
+                    thumbnails = res.get('thumbnails', [])
+                    thumbnail = thumbnails[-1].get('url', '') if thumbnails else ''
+                    
+                    score = self.calculate_match_score(title, channel, track_name, artist)
+                    
+                    candidates.append({
+                        'video_id': video_id,
+                        'title': title,
+                        'channel': channel,
+                        'duration': duration,
+                        'thumbnail': thumbnail,
+                        'score': round(score, 3),
+                        'url': f"https://music.youtube.com/watch?v={video_id}",
+                        'source': 'ytmusic'
+                    })
+            except Exception as e:
+                print(f"YTMusic search failed: {e}")
+
+        # Fallback to yt-dlp if no candidates found or YTMusic failed
+        if not candidates:
+            if track_info and track_info.get('album'):
+                query = f"{artist} {track_name} {track_info.get('album')} official"
+            else:
+                query = f"{artist} {track_name} official audio"
+            
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'extract_flat': True,
+                'default_search': f'ytsearch{num_results}',
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            }
+            
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    search_query = f"ytsearch{num_results}:{query}"
+                    info = ydl.extract_info(search_query, download=False)
+                    
+                    if 'entries' in info and info['entries']:
+                        for entry in info['entries']:
+                            if not entry:
+                                continue
+                            
+                            title = entry.get('title', '')
+                            channel = entry.get('channel', entry.get('uploader', ''))
+                            video_id = entry.get('id', '')
+                            duration = entry.get('duration', 0)
+                            thumbnail = entry.get('thumbnail', '')
+                            
+                            score = self.calculate_match_score(title, channel, track_name, artist)
+                            
+                            candidates.append({
+                                'video_id': video_id,
+                                'title': title,
+                                'channel': channel,
+                                'duration': duration,
+                                'thumbnail': thumbnail,
+                                'score': round(score, 3),
+                                'url': f"https://www.youtube.com/watch?v={video_id}",
+                                'source': 'yt-dlp'
+                            })
+            except Exception as e:
+                print(f"yt-dlp search failed: {e}")
+
+        # Sort by score descending
+        candidates.sort(key=lambda x: x['score'], reverse=True)
         
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                search_query = f"ytsearch{num_results}:{query}"
-                info = ydl.extract_info(search_query, download=False)
-                
-                candidates = []
-                if 'entries' in info and info['entries']:
-                    for entry in info['entries']:
-                        if not entry:
-                            continue
-                        
-                        title = entry.get('title', '')
-                        channel = entry.get('channel', entry.get('uploader', ''))
-                        video_id = entry.get('id', '')
-                        duration = entry.get('duration', 0)
-                        thumbnail = entry.get('thumbnail', '')
-                        
-                        # Calculate match score
-                        score = self.calculate_match_score(title, channel, track_name, artist)
-                        
-                        candidates.append({
-                            'video_id': video_id,
-                            'title': title,
-                            'channel': channel,
-                            'duration': duration,
-                            'thumbnail': thumbnail,
-                            'score': round(score, 3),
-                            'url': f"https://www.youtube.com/watch?v={video_id}"
-                        })
-                
-                # Sort by score descending
-                candidates.sort(key=lambda x: x['score'], reverse=True)
-                
-                # Determine if we need user confirmation
-                best_score = candidates[0]['score'] if candidates else 0
-                needs_confirmation = best_score < CONFIDENCE_THRESHOLD
-                
-                return {
-                    'success': True,
-                    'candidates': candidates[:3],  # Return top 3
-                    'best_score': best_score,
-                    'needs_confirmation': needs_confirmation,
-                    'threshold': CONFIDENCE_THRESHOLD
-                }
-                
-        except Exception as e:
+        if not candidates:
             return {
                 'success': False,
-                'error': str(e),
+                'error': "No results found on YouTube or YouTube Music",
                 'candidates': [],
                 'needs_confirmation': False
             }
+
+        best_score = candidates[0]['score']
+        needs_confirmation = best_score < CONFIDENCE_THRESHOLD
+        
+        return {
+            'success': True,
+            'candidates': candidates[:3],
+            'best_score': best_score,
+            'needs_confirmation': needs_confirmation,
+            'threshold': CONFIDENCE_THRESHOLD
+        }
     
     def download_by_video_id(self, video_id: str, output_path: str) -> Dict:
         """Download a specific YouTube video by ID"""
@@ -219,6 +279,20 @@ class YouTubeService:
         if video_id:
             return self.download_by_video_id(video_id, output_path)
         
+        # Try to find the best candidate using our search logic (YTMusic with yt-dlp fallback)
+        # This ensures album downloads and auto-downloads use the best available source
+        try:
+            search_result = self.search_candidates(track_name, artist, track_info, num_results=3)
+            if search_result.get('success') and search_result.get('candidates'):
+                best_candidate = search_result['candidates'][0]
+                # If we have a high confidence match, use it directly
+                if best_candidate['score'] >= CONFIDENCE_THRESHOLD:
+                    print(f"Auto-selected best candidate for download: '{best_candidate['title']}' (Score: {best_candidate['score']}, Source: {best_candidate.get('source')})")
+                    return self.download_by_video_id(best_candidate['video_id'], output_path)
+        except Exception as e:
+            print(f"Pre-download search failed: {e}")
+
+        # Fallback to original yt-dlp search and download logic if no high-confidence candidate found
         # Create more specific search query to get better matches
         # Include album name if available for better matching
         if track_info and track_info.get('album'):
