@@ -9,4 +9,5 @@ requests==2.31.0
 aiofiles==23.2.1
 pydantic==2.5.0
 python-dotenv==1.0.0
+ytmusicapi==1.11.4
 

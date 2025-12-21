@@ -251,6 +251,17 @@ async function downloadTrack(track, selectedVideoId = null) {
 let pendingTrack = null;
 let pendingLocation = null;
 
+function getYouTubeUrl(videoId, source = 'yt-dlp') {
+    const baseUrl = source === 'ytmusic' ? 'https://music.youtube.com' : 'https://www.youtube.com';
+    return `${baseUrl}/watch?v=${encodeURIComponent(videoId)}`;
+}
+
+const EXTERNAL_LINK_SVG = `
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  <path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3z"></path>
+  <path d="M5 5h6v2H7v10h10v-4h2v6H5V5z"></path>
+</svg>`;
+
 function showCandidateModal(track, candidates, location) {
     pendingTrack = track;
     pendingLocation = location;
@@ -267,12 +278,20 @@ function showCandidateModal(track, candidates, location) {
     `;
     
     // Show candidates
-    candidatesList.innerHTML = candidates.map((candidate, index) => `
+    candidatesList.innerHTML = candidates.map((candidate) => `
         <div class="candidate-card" data-video-id="${candidate.video_id}">
-            <img src="${candidate.thumbnail || 'https://via.placeholder.com/120x68?text=No+Thumb'}" 
-                 alt="Thumbnail" class="candidate-thumb" />
             <div class="candidate-info">
-                <div class="candidate-title">${escapeHtml(candidate.title)}</div>
+                <div class="candidate-title-row">
+                    <div class="candidate-title">${escapeHtml(candidate.title)}</div>
+                    <a
+                        class="candidate-external"
+                        href="${getYouTubeUrl(candidate.video_id, candidate.source)}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Open on YouTube"
+                        aria-label="Open on YouTube"
+                    >${EXTERNAL_LINK_SVG}</a>
+                </div>
                 <div class="candidate-channel">${escapeHtml(candidate.channel)}</div>
                 <div class="candidate-meta">
                     <span class="candidate-duration">${formatDuration(candidate.duration * 1000)}</span>
@@ -289,8 +308,15 @@ function showCandidateModal(track, candidates, location) {
     candidatesList.querySelectorAll('.candidate-select').forEach(btn => {
         btn.addEventListener('click', () => {
             const videoId = btn.dataset.videoId;
+            const trackToDownload = pendingTrack;
+            const locationToUse = pendingLocation;
             hideCandidateModal();
-            downloadTrack(pendingTrack, videoId);
+            // Preserve the user's chosen location from when they clicked Download
+            if (locationToUse) {
+                const locationSelect = document.getElementById('downloadLocation');
+                if (locationSelect) locationSelect.value = locationToUse;
+            }
+            downloadTrack(trackToDownload, videoId);
         });
     });
     

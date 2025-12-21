@@ -561,17 +561,42 @@ header h1 {
     transform: translateX(4px);
 }
 
-.candidate-thumb {
-    width: 100px;
-    height: 56px;
-    object-fit: cover;
-    border-radius: 6px;
-    flex-shrink: 0;
-}
+/* thumbnail removed from candidate selection */
 
 .candidate-info {
     flex: 1;
     min-width: 0;
+}
+
+.candidate-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.candidate-external {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.candidate-external:hover {
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.candidate-external svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
 }
 
 .candidate-title {
