@@ -394,13 +394,14 @@ class YouTubeService:
             ydl_opts['postprocessors'] = [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'm4a',
-                'preferredquality': '256',
+                # 'preferredquality': '256',
                 'nopostoverwrites': False,
             }]
             ydl_opts['postprocessor_args'] = {
                 'ffmpeg': [
-                    '-af', 'aresample=44100',
+                    # '-af', 'aresample=44100',
                     '-ac', '2',
+                    '-c:a', 'copy',
                     '-q:a', '0',
                 ]
             }
@@ -526,13 +527,14 @@ class YouTubeService:
             ydl_opts['postprocessors'] = [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'm4a',
-                'preferredquality': '256',
+                # 'preferredquality': '256',
                 'nopostoverwrites': False,
             }]
             ydl_opts['postprocessor_args'] = {
                 'ffmpeg': [
-                    '-af', 'aresample=44100',
+                    # '-af', 'aresample=44100',
                     '-ac', '2',
+                    '-c:a', 'copy',
                     '-q:a', '0',
                 ]
             }
