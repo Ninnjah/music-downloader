@@ -18,6 +18,7 @@ CONFIDENCE_THRESHOLD = 0.65
 # (tuned to match the debug script's improved model)
 DEFAULT_RANK_STRENGTH = float(os.getenv("YTMUSIC_RANK_STRENGTH", "6.0"))
 
+
 class YouTubeService:
     def __init__(self):
         self.output_format = config.OUTPUT_FORMAT
@@ -222,7 +223,7 @@ class YouTubeService:
         final = max(0.0, min(final, 1.0))
         return final
     
-    def search_candidates(self, track_name: str, artist: str, track_info: Dict = None, num_results: int = 5) -> Dict:
+    def search_candidates(self, track_name: str, artist: str, track_info: Optional[Dict] = None, num_results: int = 5) -> Dict:
         """Search YouTube and return top candidates with confidence scores."""
         candidates = []
 
@@ -460,7 +461,14 @@ class YouTubeService:
                 'error': error_msg
             }
     
-    def search_and_download(self, track_name: str, artist: str, output_path: str, track_info: Dict = None, video_id: str = None) -> Dict:
+    def search_and_download(
+        self,
+        track_name: str,
+        artist: str,
+        output_path: str,
+        track_info: Optional[Dict] = None,
+        video_id: Optional[str] = None,
+    ) -> Dict:
         """Search YouTube for a track and download it. If video_id is provided, download that specific video."""
         
         # If a specific video_id is provided, download it directly
