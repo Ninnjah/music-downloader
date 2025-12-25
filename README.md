@@ -209,12 +209,18 @@ music-downloader/
 │   ├── config.py              # Configuration management
 │   ├── requirements.txt       # Python dependencies
 │   ├── env.example            # Environment variables template
+│   ├── routers
+│   │   └── api.py             # Api handlers
+│   ├── models
+│   │   ├── request.py         # Request data models
+│   │   └── response.py        # Response data models
 │   ├── static                 # Static files
 │   │   ├── app.js             # Frontend JavaScript
 │   │   └── styles.css         # Styling
 │   ├── templates              # Templates
 │   │   └── index.html         # Main HTML page
 │   ├── services/
+│   │   ├── tasks.py           # Background tasks
 │   │   ├── spotify.py         # Spotify API integration
 │   │   ├── youtube.py         # YouTube download with yt-dlp
 │   │   ├── metadata.py        # ID3 tagging
